@@ -16,7 +16,7 @@ func main() {
 	memStorage := storage.NewMemStorage()
 
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
-	r.Get("/{url}", handler.NewLinkHandler(memStorage, c).ServeHTTP)
+	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
 
 	err := http.ListenAndServe(`:8080`, r)
 	if err != nil {
