@@ -13,7 +13,7 @@ type LinkHandler struct {
 }
 
 func NewLinkHandler(storage repository.StorageRepo) *LinkHandler {
-	return &LinkHandler{}
+	return &LinkHandler{Storage: storage}
 }
 
 func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
