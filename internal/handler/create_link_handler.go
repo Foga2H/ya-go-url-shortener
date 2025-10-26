@@ -57,7 +57,7 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 	fmt.Printf("Generated link %s for %s\n", randomString, bodyString)
 
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte("http://" + h.config.BaseUrl + "/" + randomString))
+	_, err = res.Write([]byte("http://" + h.config.BaseURL + "/" + randomString))
 	if err != nil {
 		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
 		return

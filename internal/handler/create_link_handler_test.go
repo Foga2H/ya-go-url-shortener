@@ -38,7 +38,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 			name: "success",
 			fields: fields{
 				Storage: storage.NewMemStorage(),
-				Config:  config.NewConfig(),
+				Config:  config.NewConfigFrom("localhost:8080", "http://localhost:8080"),
 			},
 			args: args{
 				bodyString: `http://yahoo.com`,
@@ -75,7 +75,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 			t.Logf("response: %s", body)
 
 			// Проверяем, что строка соответствует формату http://localhost:8080/<идентификатор>
-			matched, err := regexp.MatchString(`^`+tt.fields.Config.PrefixUrl+`/[A-Za-z0-9_-]+$`, body)
+			matched, err := regexp.MatchString(`^`+tt.fields.Config.PrefixURL+`/[A-Za-z0-9_-]+$`, body)
 			require.NoError(t, err)
 			assert.True(t, matched, "Ожидался корректный короткий URL, получено: %s", body)
 		})

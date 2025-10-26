@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 
 	config "github.com/Foga2H/ya-go-url-shortener/internal/config"
@@ -13,6 +14,7 @@ func main() {
 	r := chi.NewRouter()
 
 	c := config.NewConfig()
+	flag.Parse()
 	memStorage := storage.NewMemStorage()
 
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
