@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,7 @@ import (
 func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 	type fields struct {
 		Storage repository.StorageRepo
+		*config.Config
 	}
 	type want struct {
 		code        int
@@ -36,6 +38,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 			name: "success",
 			fields: fields{
 				Storage: storage.NewMemStorage(),
+				Config:  config.NewConfig(),
 			},
 			args: args{
 				bodyString: `http://yahoo.com`,
@@ -50,6 +53,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := &CreateLinkHandler{
 				Storage: tt.fields.Storage,
+				config:  tt.fields.Config,
 			}
 			request := httptest.NewRequest(http.MethodPost, `/`, strings.NewReader(tt.args.bodyString))
 			// создаём новый Recorder
@@ -71,7 +75,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 			t.Logf("response: %s", body)
 
 			// Проверяем, что строка соответствует формату http://localhost:8080/<идентификатор>
-			matched, err := regexp.MatchString(`^http://localhost:8080/[A-Za-z0-9_-]+$`, body)
+			matched, err := regexp.MatchString(`^`+tt.fields.Config.PrefixUrl+`/[A-Za-z0-9_-]+$`, body)
 			require.NoError(t, err)
 			assert.True(t, matched, "Ожидался корректный короткий URL, получено: %s", body)
 		})

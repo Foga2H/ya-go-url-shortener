@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,7 @@ func TestLinkHandler_ServeHTTP(t *testing.T) {
 
 	type fields struct {
 		Storage repository.StorageRepo
+		config  *config.Config
 	}
 	type args struct {
 		url  string

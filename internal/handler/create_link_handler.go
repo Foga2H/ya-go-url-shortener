@@ -8,16 +8,19 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 )
 
 type CreateLinkHandler struct {
 	Storage repository.StorageRepo
+	config  *config.Config
 }
 
-func NewCreateLinkHandler(storage repository.StorageRepo) *CreateLinkHandler {
+func NewCreateLinkHandler(storage repository.StorageRepo, config *config.Config) *CreateLinkHandler {
 	return &CreateLinkHandler{
 		Storage: storage,
+		config:  config,
 	}
 }
 
@@ -54,7 +57,7 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 	fmt.Printf("Generated link %s for %s\n", randomString, bodyString)
 
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte("http://localhost:8080/" + randomString))
+	_, err = res.Write([]byte("http://" + h.config.BaseUrl + "/" + randomString))
 	if err != nil {
 		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
 		return
