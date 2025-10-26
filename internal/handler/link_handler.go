@@ -23,7 +23,7 @@ func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "text/plain")
 
 	link, ok := h.Storage.Get(req.PathValue("url"))
-	if ok == false {
+	if !ok {
 		http.Error(res, "Link not found", http.StatusNotFound)
 		return
 	}
