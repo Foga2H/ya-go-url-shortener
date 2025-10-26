@@ -13,13 +13,13 @@ import (
 func main() {
 	r := chi.NewRouter()
 
-	c := config.NewConfig()
 	flag.Parse()
+	c := config.NewConfig()
 	memStorage := storage.NewMemStorage()
 
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
-	
+
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {
 		panic(err)
