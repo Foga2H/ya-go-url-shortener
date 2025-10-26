@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/go-chi/chi/v5"
 )
 
 type LinkHandler struct {
@@ -23,7 +24,7 @@ func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("content-type", "text/plain")
 
-	id := req.PathValue("url")
+	id := chi.URLParam(req, "url")
 	if id == "" {
 		id = strings.TrimPrefix(req.URL.Path, "/")
 	}
