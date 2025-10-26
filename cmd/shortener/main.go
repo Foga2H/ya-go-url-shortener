@@ -19,8 +19,8 @@ func main() {
 
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
-
-	err := http.ListenAndServe(`:8080`, r)
+	
+	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {
 		panic(err)
 	}
