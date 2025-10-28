@@ -2,7 +2,6 @@ package storage
 
 import (
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,8 +9,7 @@ import (
 
 func TestMemStorage_Get(t *testing.T) {
 	type fields struct {
-		links      map[string]string
-		linksMutex sync.RWMutex
+		links map[string]string
 	}
 	type args struct {
 		key string
@@ -29,7 +27,6 @@ func TestMemStorage_Get(t *testing.T) {
 				links: map[string]string{
 					"link1": "value1",
 				},
-				linksMutex: sync.RWMutex{},
 			},
 			args: args{
 				key: "link1",
@@ -43,7 +40,6 @@ func TestMemStorage_Get(t *testing.T) {
 				links: map[string]string{
 					"link2": "value1",
 				},
-				linksMutex: sync.RWMutex{},
 			},
 			args: args{
 				key: "link1",
@@ -55,8 +51,7 @@ func TestMemStorage_Get(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &MemStorage{
-				links:      tt.fields.links,
-				linksMutex: tt.fields.linksMutex,
+				links: tt.fields.links,
 			}
 			got, got1 := m.Get(tt.args.key)
 			if got != tt.want {
@@ -71,8 +66,7 @@ func TestMemStorage_Get(t *testing.T) {
 
 func TestMemStorage_Set(t *testing.T) {
 	type fields struct {
-		links      map[string]string
-		linksMutex sync.RWMutex
+		links map[string]string
 	}
 	type args struct {
 		key   string
@@ -89,7 +83,6 @@ func TestMemStorage_Set(t *testing.T) {
 				links: map[string]string{
 					"link1": "value1",
 				},
-				linksMutex: sync.RWMutex{},
 			},
 			args: args{
 				key:   "link1",
@@ -100,8 +93,7 @@ func TestMemStorage_Set(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &MemStorage{
-				links:      tt.fields.links,
-				linksMutex: tt.fields.linksMutex,
+				links: tt.fields.links,
 			}
 			m.Set(tt.args.key, tt.args.value)
 			assert.Equal(t, tt.args.value, m.links[tt.args.key])
@@ -117,8 +109,7 @@ func TestNewMemStorage(t *testing.T) {
 		{
 			name: "success",
 			want: &MemStorage{
-				links:      make(map[string]string),
-				linksMutex: sync.RWMutex{},
+				links: make(map[string]string),
 			},
 		},
 	}

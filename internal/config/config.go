@@ -17,8 +17,8 @@ type Config struct {
 }
 
 func NewConfig() *Config {
-	if envRunBaseUrl := os.Getenv("SERVER_ADDRESS"); envRunBaseUrl != "" {
-		*flagRunBaseURL = envRunBaseUrl
+	if envRunBaseURL := os.Getenv("SERVER_ADDRESS"); envRunBaseURL != "" {
+		*flagRunBaseURL = envRunBaseURL
 	}
 
 	if envRunPrefixURL := os.Getenv("BASE_URL"); envRunPrefixURL != "" {
