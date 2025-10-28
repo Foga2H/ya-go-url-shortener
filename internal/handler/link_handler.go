@@ -17,11 +17,6 @@ func NewLinkHandler(storage repository.StorageRepo) *LinkHandler {
 }
 
 func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(res, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	res.Header().Set("content-type", "text/plain")
 
 	id := chi.URLParam(req, "url")

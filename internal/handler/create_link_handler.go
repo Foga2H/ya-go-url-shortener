@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +8,7 @@ import (
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
 )
 
 type CreateLinkHandler struct {
@@ -25,11 +24,6 @@ func NewCreateLinkHandler(storage repository.StorageRepo, config *config.Config)
 }
 
 func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		http.Error(res, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	res.Header().Set("content-type", "text/plain")
 
 	bodyBytes, err := io.ReadAll(req.Body)
@@ -46,7 +40,7 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	randomString, err := GenerateRandomStringURLSafe(6)
+	randomString, err := utils.GenerateRandomStringURLSafe(6)
 	if err != nil {
 		http.Error(res, "Error when trying to generate random link", http.StatusBadRequest)
 		return
@@ -54,21 +48,12 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 
 	h.Storage.Set(randomString, bodyString)
 
-	fmt.Printf("Generated link %s for %s\n", randomString, bodyString)
+	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+randomString, bodyString)
 
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte("http://" + h.config.BaseURL + "/" + randomString))
+	_, err = res.Write([]byte(h.config.PrefixURL + "/" + randomString))
 	if err != nil {
 		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
 		return
 	}
-}
-
-func GenerateRandomStringURLSafe(length int) (string, error) {
-	b := make([]byte, length)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), nil
 }
