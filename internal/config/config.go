@@ -1,7 +1,10 @@
 // internal/config/config.go
 package config
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 var (
 	flagRunBaseURL   = flag.String("a", "localhost:8080", "address and port to run server")
@@ -14,6 +17,14 @@ type Config struct {
 }
 
 func NewConfig() *Config {
+	if envRunBaseUrl := os.Getenv("SERVER_ADDRESS"); envRunBaseUrl != "" {
+		*flagRunBaseURL = envRunBaseUrl
+	}
+
+	if envRunPrefixURL := os.Getenv("BASE_URL"); envRunPrefixURL != "" {
+		*flagRunPrefixURL = envRunPrefixURL
+	}
+
 	return &Config{
 		BaseURL:   *flagRunBaseURL,
 		PrefixURL: *flagRunPrefixURL,
