@@ -24,6 +24,8 @@ func main() {
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
 
+	r.Post("/api/shorten", handler.NewShortenJSONHandler(memStorage, c).ServeHTTP)
+
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {
 		panic(err)
