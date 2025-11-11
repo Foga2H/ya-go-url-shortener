@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/gzip"
 	"github.com/Foga2H/ya-go-url-shortener/internal/handler"
 	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
@@ -18,8 +19,10 @@ func main() {
 	c := config.NewConfig()
 	memStorage := storage.NewMemStorage()
 	l := logger.NewLogger()
+	gz := gzip.NewGzip()
 
 	r.Use(l.LoggerMiddleware())
+	r.Use(gz.Middleware())
 
 	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
