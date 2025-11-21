@@ -19,9 +19,9 @@ func NewStorage(path string) *Storage {
 }
 
 type StorageItem struct {
-	Uuid        string `json:"uuid"`
-	ShortUrl    string `json:"short_url"`
-	OriginalUrl string `json:"original_url"`
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 func (s *Storage) Set(key string, value string) error {
@@ -32,9 +32,9 @@ func (s *Storage) Set(key string, value string) error {
 	}
 
 	storageFile = append(storageFile, StorageItem{
-		Uuid:        uuid.New().String(),
-		ShortUrl:    key,
-		OriginalUrl: value,
+		UUID:        uuid.New().String(),
+		ShortURL:    key,
+		OriginalURL: value,
 	})
 
 	data, err2 := json.Marshal(storageFile)
@@ -57,8 +57,8 @@ func (s *Storage) Get(key string) (string, bool) {
 	}
 
 	for _, item := range items {
-		if item.ShortUrl == key {
-			return item.OriginalUrl, true
+		if item.ShortURL == key {
+			return item.OriginalURL, true
 		}
 	}
 
