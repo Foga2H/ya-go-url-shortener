@@ -24,3 +24,4 @@ vendor/
 
 # MacOS
 *.DS_Store
+storage.json

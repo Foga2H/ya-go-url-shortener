@@ -8,7 +8,7 @@ import (
 	"github.com/Foga2H/ya-go-url-shortener/internal/gzip"
 	"github.com/Foga2H/ya-go-url-shortener/internal/handler"
 	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
-	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
+	"github.com/Foga2H/ya-go-url-shortener/internal/storage/file"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,17 +17,18 @@ func main() {
 
 	flag.Parse()
 	c := config.NewConfig()
-	memStorage := storage.NewMemStorage()
+	//memStorage := storage.NewMemStorage()
+	fileStorage := file.NewStorage(c.FileStoragePath)
 	l := logger.NewLogger()
 	gz := gzip.NewGzip()
 
 	r.Use(l.LoggerMiddleware())
 	r.Use(gz.Middleware())
 
-	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
-	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
+	r.Post("/", handler.NewCreateLinkHandler(fileStorage, c).ServeHTTP)
+	r.Get("/{url}", handler.NewLinkHandler(fileStorage).ServeHTTP)
 
-	r.Post("/api/shorten", handler.NewShortenJSONHandler(memStorage, c).ServeHTTP)
+	r.Post("/api/shorten", handler.NewShortenJSONHandler(fileStorage, c).ServeHTTP)
 
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {
