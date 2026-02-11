@@ -13,10 +13,11 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) Set(key string, value string) {
+func (m *MemStorage) Set(key string, value string) error {
 	m.linksMutex.Lock()
 	defer m.linksMutex.Unlock()
 	m.links[key] = value
+	return nil
 }
 
 func (m *MemStorage) Get(key string) (string, bool) {

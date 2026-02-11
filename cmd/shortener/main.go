@@ -4,9 +4,11 @@ import (
 	"flag"
 	"net/http"
 
-	config "github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/gzip"
 	"github.com/Foga2H/ya-go-url-shortener/internal/handler"
-	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/storage/file"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -15,10 +17,18 @@ func main() {
 
 	flag.Parse()
 	c := config.NewConfig()
-	memStorage := storage.NewMemStorage()
+	//memStorage := storage.NewMemStorage()
+	fileStorage := file.NewStorage(c.FileStoragePath)
+	l := logger.NewLogger()
+	gz := gzip.NewGzip()
 
-	r.Post("/", handler.NewCreateLinkHandler(memStorage, c).ServeHTTP)
-	r.Get("/{url}", handler.NewLinkHandler(memStorage).ServeHTTP)
+	r.Use(l.LoggerMiddleware())
+	r.Use(gz.Middleware())
+
+	r.Post("/", handler.NewCreateLinkHandler(fileStorage, c).ServeHTTP)
+	r.Get("/{url}", handler.NewLinkHandler(fileStorage).ServeHTTP)
+
+	r.Post("/api/shorten", handler.NewShortenJSONHandler(fileStorage, c).ServeHTTP)
 
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {

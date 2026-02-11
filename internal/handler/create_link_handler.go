@@ -46,7 +46,11 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	h.Storage.Set(randomString, bodyString)
+	err2 := h.Storage.Set(randomString, bodyString)
+	if err2 != nil {
+		http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
+		return
+	}
 
 	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+randomString, bodyString)
 
