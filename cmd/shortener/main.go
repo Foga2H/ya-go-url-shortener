@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
 	"net/http"
 
@@ -15,6 +16,9 @@ import (
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/file"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -32,6 +36,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		driver, err := postgres.WithInstance(dbConnection, &postgres.Config{})
+		if err != nil {
+			panic(err)
+		}
+
+		m, err := migrate.NewWithDatabaseInstance(
+			"file://migrations",
+			"postgres", driver)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			panic(err)
+		}
+
 		selectedStorage = dbStorage.NewStorage(dbConnection)
 	} else if c.FileStoragePath != "" {
 		selectedStorage = file.NewStorage(c.FileStoragePath)
