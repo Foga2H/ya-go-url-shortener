@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	flagDatabaseDsn = flag.String("d", "postgres://foga:foga@localhost:5432/foga?sslmode=disable", "database connection string")
+	flagDatabaseDsn = flag.String("d", "", "database connection string")
 )
 
 type Config struct {
