@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type Storage struct {
@@ -20,7 +22,12 @@ type StorageItem struct {
 }
 
 func (s *Storage) Set(key string, value string) error {
-	// TODO
+	_, err := s.db.ExecContext(context.Background(), "INSERT INTO links (uuid, short_url, original_url) VALUES ($1, $2, $3)", uuid.New().String(), key, value)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
