@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
@@ -37,6 +39,12 @@ type BatchResult struct {
 func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	jsonDecoder := json.NewDecoder(r.Body)
 	var items []BatchRequest
 	err := jsonDecoder.Decode(&items)
@@ -48,7 +56,7 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	var results []BatchResult
 
 	for _, item := range items {
-		result, err := h.shortItem(item)
+		result, err := h.shortItem(r.Context(), userID, item)
 		if err != nil {
 			http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
 			return
@@ -66,13 +74,13 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	w.Write(resp)
 }
 
-func (h *ShortenBatchJSONHandler) shortItem(item BatchRequest) (BatchResult, error) {
+func (h *ShortenBatchJSONHandler) shortItem(ctx context.Context, userID string, item BatchRequest) (BatchResult, error) {
 	randomString, err := utils.GenerateRandomStringURLSafe(6)
 	if err != nil {
 		return BatchResult{}, err
 	}
 
-	storedKey, err := h.Storage.Set(randomString, item.OriginalURL)
+	storedKey, err := h.Storage.Set(ctx, userID, randomString, item.OriginalURL)
 	if err != nil {
 		if errors.Is(err, db.ErrOriginalURLConflict) {
 			var result BatchResult

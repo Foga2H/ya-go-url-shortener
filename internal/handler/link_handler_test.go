@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +17,7 @@ import (
 
 func TestLinkHandler_ServeHTTP(t *testing.T) {
 	memStorage := storage.NewMemStorage()
-	_, err := memStorage.Set(`test`, `http://yandex.ru`)
+	_, err := memStorage.Set(context.Background(), "test-user", `test`, `http://yandex.ru`)
 	require.NoError(t, err)
 
 	type fields struct {

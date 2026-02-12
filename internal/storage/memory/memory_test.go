@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 
 func TestMemStorage_Get(t *testing.T) {
 	type fields struct {
-		links map[string]string
+		links map[string]Link
 	}
 	type args struct {
 		key string
@@ -24,8 +25,8 @@ func TestMemStorage_Get(t *testing.T) {
 		{
 			name: "Get link successfully",
 			fields: fields{
-				links: map[string]string{
-					"link1": "value1",
+				links: map[string]Link{
+					"link1": {OriginalURL: "value1", UserID: "u1"},
 				},
 			},
 			args: args{
@@ -37,8 +38,8 @@ func TestMemStorage_Get(t *testing.T) {
 		{
 			name: "Get link not found",
 			fields: fields{
-				links: map[string]string{
-					"link2": "value1",
+				links: map[string]Link{
+					"link2": {OriginalURL: "value1", UserID: "u1"},
 				},
 			},
 			args: args{
@@ -53,7 +54,7 @@ func TestMemStorage_Get(t *testing.T) {
 			m := &MemStorage{
 				links: tt.fields.links,
 			}
-			got, got1 := m.Get(tt.args.key)
+			got, got1 := m.Get(context.Background(), tt.args.key)
 			if got != tt.want {
 				t.Errorf("Get() got = %v, want %v", got, tt.want)
 			}
@@ -66,11 +67,12 @@ func TestMemStorage_Get(t *testing.T) {
 
 func TestMemStorage_Set(t *testing.T) {
 	type fields struct {
-		links map[string]string
+		links map[string]Link
 	}
 	type args struct {
-		key   string
-		value string
+		userID string
+		key    string
+		value  string
 	}
 	tests := []struct {
 		name   string
@@ -80,13 +82,14 @@ func TestMemStorage_Set(t *testing.T) {
 		{
 			name: "Set link successfully",
 			fields: fields{
-				links: map[string]string{
-					"link1": "value1",
+				links: map[string]Link{
+					"link1": {OriginalURL: "value1", UserID: "u1"},
 				},
 			},
 			args: args{
-				key:   "link1",
-				value: "value2",
+				userID: "u2",
+				key:    "link1",
+				value:  "value2",
 			},
 		},
 	}
@@ -95,10 +98,11 @@ func TestMemStorage_Set(t *testing.T) {
 			m := &MemStorage{
 				links: tt.fields.links,
 			}
-			gotKey, err := m.Set(tt.args.key, tt.args.value)
+			gotKey, err := m.Set(context.Background(), tt.args.userID, tt.args.key, tt.args.value)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.args.key, gotKey)
-			assert.Equal(t, tt.args.value, m.links[tt.args.key])
+			assert.Equal(t, tt.args.value, m.links[tt.args.key].OriginalURL)
+			assert.Equal(t, tt.args.userID, m.links[tt.args.key].UserID)
 		})
 	}
 }
@@ -111,7 +115,7 @@ func TestNewMemStorage(t *testing.T) {
 		{
 			name: "success",
 			want: &MemStorage{
-				links: make(map[string]string),
+				links: make(map[string]Link),
 			},
 		},
 	}

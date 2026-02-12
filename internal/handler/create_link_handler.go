@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
@@ -27,6 +28,12 @@ func NewCreateLinkHandler(storage repository.StorageRepo, config *config.Config)
 
 func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "text/plain")
+
+	userID, ok := middleware.UserIDFromContext(req.Context())
+	if !ok {
+		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	bodyBytes, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -48,7 +55,7 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	storedKey, err2 := h.Storage.Set(randomString, bodyString)
+	storedKey, err2 := h.Storage.Set(req.Context(), userID, randomString, bodyString)
 	if err2 != nil {
 		if errors.Is(err2, db.ErrOriginalURLConflict) {
 			res.WriteHeader(http.StatusConflict)

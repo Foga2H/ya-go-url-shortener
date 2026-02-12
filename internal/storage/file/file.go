@@ -1,10 +1,12 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/google/uuid"
 )
 
@@ -20,11 +22,12 @@ func NewStorage(path string) *Storage {
 
 type StorageItem struct {
 	UUID        string `json:"uuid"`
+	UserID      string `json:"user_id"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
-func (s *Storage) Set(key string, value string) (string, error) {
+func (s *Storage) Set(_ context.Context, userID, key, value string) (string, error) {
 	storageFile, err := s.load()
 	log.Print(err, err != nil)
 	if err != nil {
@@ -33,6 +36,7 @@ func (s *Storage) Set(key string, value string) (string, error) {
 
 	storageFile = append(storageFile, StorageItem{
 		UUID:        uuid.New().String(),
+		UserID:      userID,
 		ShortURL:    key,
 		OriginalURL: value,
 	})
@@ -51,7 +55,7 @@ func (s *Storage) Set(key string, value string) (string, error) {
 	return key, nil
 }
 
-func (s *Storage) Get(key string) (string, bool) {
+func (s *Storage) Get(_ context.Context, key string) (string, bool) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		return "", false
@@ -68,6 +72,27 @@ func (s *Storage) Get(key string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func (s *Storage) GetByUserID(_ context.Context, userID string) ([]repository.UserLink, error) {
+	items, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]repository.UserLink, 0)
+	for _, item := range items {
+		if item.UserID != userID {
+			continue
+		}
+
+		result = append(result, repository.UserLink{
+			ShortURL:    item.ShortURL,
+			OriginalURL: item.OriginalURL,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *Storage) load() ([]StorageItem, error) {

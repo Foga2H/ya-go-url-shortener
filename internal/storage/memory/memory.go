@@ -1,28 +1,60 @@
 package storage
 
-import "sync"
+import (
+	"context"
+	"sync"
+
+	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+)
+
+type Link struct {
+	OriginalURL string
+	UserID      string
+}
 
 type MemStorage struct {
-	links      map[string]string
+	links      map[string]Link
 	linksMutex sync.RWMutex
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		links: make(map[string]string),
+		links: make(map[string]Link),
 	}
 }
 
-func (m *MemStorage) Set(key string, value string) (string, error) {
+func (m *MemStorage) Set(_ context.Context, userID, key, value string) (string, error) {
 	m.linksMutex.Lock()
 	defer m.linksMutex.Unlock()
-	m.links[key] = value
+	m.links[key] = Link{
+		OriginalURL: value,
+		UserID:      userID,
+	}
 	return key, nil
 }
 
-func (m *MemStorage) Get(key string) (string, bool) {
+func (m *MemStorage) Get(_ context.Context, key string) (string, bool) {
 	m.linksMutex.RLock()
 	defer m.linksMutex.RUnlock()
 	val, ok := m.links[key]
-	return val, ok
+	return val.OriginalURL, ok
+}
+
+func (m *MemStorage) GetByUserID(_ context.Context, userID string) ([]repository.UserLink, error) {
+	m.linksMutex.RLock()
+	defer m.linksMutex.RUnlock()
+
+	result := make([]repository.UserLink, 0)
+	for shortURL, link := range m.links {
+		if link.UserID != userID {
+			continue
+		}
+
+		result = append(result, repository.UserLink{
+			ShortURL:    shortURL,
+			OriginalURL: link.OriginalURL,
+		})
+	}
+
+	return result, nil
 }

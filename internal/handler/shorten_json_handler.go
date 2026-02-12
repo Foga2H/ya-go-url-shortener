@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
@@ -35,6 +36,12 @@ type Response struct {
 func (h *ShortenJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	jsonDecoder := json.NewDecoder(r.Body)
 	var req Request
 	err := jsonDecoder.Decode(&req)
@@ -49,7 +56,7 @@ func (h *ShortenJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	storedKey, err := h.Storage.Set(randomString, req.URL)
+	storedKey, err := h.Storage.Set(r.Context(), userID, randomString, req.URL)
 	if err != nil {
 		if errors.Is(err, db.ErrOriginalURLConflict) {
 			w.WriteHeader(http.StatusConflict)

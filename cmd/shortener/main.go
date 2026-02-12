@@ -6,11 +6,13 @@ import (
 	"flag"
 	"net/http"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/auth"
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	configDb "github.com/Foga2H/ya-go-url-shortener/internal/config/db"
 	"github.com/Foga2H/ya-go-url-shortener/internal/gzip"
 	"github.com/Foga2H/ya-go-url-shortener/internal/handler"
 	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	dbStorage "github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/file"
@@ -60,9 +62,12 @@ func main() {
 
 	l := logger.NewLogger()
 	gz := gzip.NewGzip()
+	token := auth.NewToken(c.JWTSecret)
+	uc := middleware.NewUserCookie(token)
 
 	r.Use(l.LoggerMiddleware())
 	r.Use(gz.Middleware())
+	r.Use(uc.Middleware())
 
 	r.Post("/", handler.NewCreateLinkHandler(selectedStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(selectedStorage).ServeHTTP)
@@ -71,6 +76,7 @@ func main() {
 
 	r.Post("/api/shorten", handler.NewShortenJSONHandler(selectedStorage, c).ServeHTTP)
 	r.Post("/api/shorten/batch", handler.NewShortenBatchJSONHandler(selectedStorage, c).ServeHTTP)
+	r.Get("/api/user/urls", handler.NewUserURLsHandler(selectedStorage, c).ServeHTTP)
 
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {

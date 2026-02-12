@@ -24,7 +24,7 @@ func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		id = strings.TrimPrefix(req.URL.Path, "/")
 	}
 
-	link, ok := h.Storage.Get(id)
+	link, ok := h.Storage.Get(req.Context(), id)
 	if !ok {
 		http.Error(res, "Link not found", http.StatusNotFound)
 		return
