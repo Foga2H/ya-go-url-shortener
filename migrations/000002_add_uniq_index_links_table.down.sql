@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_uniq_links_original_url;

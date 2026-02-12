@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
 )
 
@@ -46,16 +48,25 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	err2 := h.Storage.Set(randomString, bodyString)
+	storedKey, err2 := h.Storage.Set(randomString, bodyString)
 	if err2 != nil {
+		if errors.Is(err2, db.ErrOriginalURLConflict) {
+			res.WriteHeader(http.StatusConflict)
+			_, err = res.Write([]byte(h.config.PrefixURL + "/" + storedKey))
+			if err != nil {
+				http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
+				return
+			}
+			return
+		}
 		http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+randomString, bodyString)
+	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+storedKey, bodyString)
 
 	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte(h.config.PrefixURL + "/" + randomString))
+	_, err = res.Write([]byte(h.config.PrefixURL + "/" + storedKey))
 	if err != nil {
 		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
 		return

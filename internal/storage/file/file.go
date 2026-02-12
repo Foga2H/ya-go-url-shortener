@@ -24,11 +24,11 @@ type StorageItem struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func (s *Storage) Set(key string, value string) error {
+func (s *Storage) Set(key string, value string) (string, error) {
 	storageFile, err := s.load()
 	log.Print(err, err != nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	storageFile = append(storageFile, StorageItem{
@@ -40,10 +40,15 @@ func (s *Storage) Set(key string, value string) error {
 	data, err2 := json.Marshal(storageFile)
 
 	if err2 != nil {
-		return err2
+		return "", err2
 	}
 
-	return os.WriteFile(s.path, data, 0666)
+	err = os.WriteFile(s.path, data, 0666)
+	if err != nil {
+		return "", err
+	}
+
+	return key, nil
 }
 
 func (s *Storage) Get(key string) (string, bool) {

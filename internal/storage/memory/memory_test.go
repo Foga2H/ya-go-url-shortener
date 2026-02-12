@@ -95,7 +95,9 @@ func TestMemStorage_Set(t *testing.T) {
 			m := &MemStorage{
 				links: tt.fields.links,
 			}
-			m.Set(tt.args.key, tt.args.value)
+			gotKey, err := m.Set(tt.args.key, tt.args.value)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.args.key, gotKey)
 			assert.Equal(t, tt.args.value, m.links[tt.args.key])
 		})
 	}

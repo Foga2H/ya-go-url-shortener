@@ -16,7 +16,8 @@ import (
 
 func TestLinkHandler_ServeHTTP(t *testing.T) {
 	memStorage := storage.NewMemStorage()
-	memStorage.Set(`test`, `http://yandex.ru`)
+	_, err := memStorage.Set(`test`, `http://yandex.ru`)
+	require.NoError(t, err)
 
 	type fields struct {
 		Storage repository.StorageRepo

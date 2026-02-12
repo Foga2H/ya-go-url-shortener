@@ -2,11 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
 )
 
@@ -47,11 +49,25 @@ func (h *ShortenJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Storage.Set(randomString, req.URL)
+	storedKey, err := h.Storage.Set(randomString, req.URL)
+	if err != nil {
+		if errors.Is(err, db.ErrOriginalURLConflict) {
+			w.WriteHeader(http.StatusConflict)
+			resp, err := json.Marshal(Response{Result: h.config.PrefixURL + "/" + storedKey})
+			if err != nil {
+				http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
+				return
+			}
+			w.Write(resp)
+			return
+		}
+		http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
+		return
+	}
 
-	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+randomString, req.URL)
+	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+storedKey, req.URL)
 
-	resp, err := json.Marshal(Response{Result: h.config.PrefixURL + "/" + randomString})
+	resp, err := json.Marshal(Response{Result: h.config.PrefixURL + "/" + storedKey})
 	if err != nil {
 		http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
 		return

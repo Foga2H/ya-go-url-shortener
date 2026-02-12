@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX idx_uniq_links_original_url ON links(original_url);
