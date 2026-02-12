@@ -70,7 +70,7 @@ func (h *ShortenBatchJSONHandler) shortItem(item BatchRequest) BatchResult {
 
 	var result BatchResult
 	result.CorrelationID = item.CorrelationID
-	result.ShortURL = randomString
+	result.ShortURL = h.config.PrefixURL + "/" + randomString
 
 	return result
 }
