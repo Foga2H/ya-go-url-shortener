@@ -55,6 +55,8 @@ func main() {
 			panic(err)
 		}
 
+		r.Get("/ping", handler.NewPingHandler(dbConnection).ServeHTTP)
+
 		selectedStorage = dbStorage.NewStorage(dbConnection)
 	} else if c.FileStoragePath != "" {
 		selectedStorage = file.NewStorage(c.FileStoragePath)
@@ -69,10 +71,8 @@ func main() {
 	r.Use(gz.Middleware())
 	r.Use(uc.Middleware())
 
-	r.Post("/", handler.NewCreateLinkHandler(selectedStorage, c).ServeHTTP)
+	r.Post("/", handler.NewCreateLinkHandler(selectedStorage, c.PrefixURL).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(selectedStorage).ServeHTTP)
-
-	r.Get("/ping", handler.NewPingHandler(db).ServeHTTP)
 
 	r.Post("/api/shorten", handler.NewShortenJSONHandler(selectedStorage, c).ServeHTTP)
 	r.Post("/api/shorten/batch", handler.NewShortenBatchJSONHandler(selectedStorage, c).ServeHTTP)

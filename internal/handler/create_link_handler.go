@@ -2,27 +2,21 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 
-	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
-	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
-	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
+	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 )
 
 type CreateLinkHandler struct {
-	Storage repository.StorageRepo
-	config  *config.Config
+	service *service.CreateLinkService
 }
 
-func NewCreateLinkHandler(storage repository.StorageRepo, config *config.Config) *CreateLinkHandler {
+func NewCreateLinkHandler(storage repository.StorageRepo, prefixURL string) *CreateLinkHandler {
 	return &CreateLinkHandler{
-		Storage: storage,
-		config:  config,
+		service: service.NewCreateLinkService(storage, prefixURL),
 	}
 }
 
@@ -41,39 +35,32 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 		return
 	}
 
-	// Convert the byte slice to a string
 	bodyString := string(bodyBytes)
-	_, err = url.ParseRequestURI(bodyString)
+	result, err := h.service.Create(req.Context(), userID, bodyString)
 	if err != nil {
-		http.Error(res, "Provided URL is not valid", http.StatusBadRequest)
-		return
-	}
-
-	randomString, err := utils.GenerateRandomStringURLSafe(6)
-	if err != nil {
-		http.Error(res, "Error when trying to generate random link", http.StatusBadRequest)
-		return
-	}
-
-	storedKey, err2 := h.Storage.Set(req.Context(), userID, randomString, bodyString)
-	if err2 != nil {
-		if errors.Is(err2, db.ErrOriginalURLConflict) {
-			res.WriteHeader(http.StatusConflict)
-			_, err = res.Write([]byte(h.config.PrefixURL + "/" + storedKey))
-			if err != nil {
-				http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
-				return
-			}
+		if errors.Is(err, service.ErrInvalidURL) {
+			http.Error(res, "Provided URL is not valid", http.StatusBadRequest)
 			return
 		}
+		if errors.Is(err, service.ErrGenerateShortLink) {
+			http.Error(res, "Error when trying to generate random link", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrSaveLink) {
+			http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
+			return
+		}
+
 		http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+storedKey, bodyString)
-
-	res.WriteHeader(http.StatusCreated)
-	_, err = res.Write([]byte(h.config.PrefixURL + "/" + storedKey))
+	if result.IsConflict {
+		res.WriteHeader(http.StatusConflict)
+	} else {
+		res.WriteHeader(http.StatusCreated)
+	}
+	_, err = res.Write([]byte(result.ShortURL))
 	if err != nil {
 		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
 		return

@@ -3,16 +3,15 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 )
 
 type UserURLsHandler struct {
-	storage repository.StorageRepo
-	config  *config.Config
+	service *service.UserURLsService
 }
 
 type userURLResponse struct {
@@ -22,8 +21,7 @@ type userURLResponse struct {
 
 func NewUserURLsHandler(storage repository.StorageRepo, config *config.Config) *UserURLsHandler {
 	return &UserURLsHandler{
-		storage: storage,
-		config:  config,
+		service: service.NewUserURLsService(storage, config.PrefixURL),
 	}
 }
 
@@ -36,7 +34,7 @@ func (h *UserURLsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.storage.GetByUserID(r.Context(), userID)
+	results, err := h.service.List(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 		return
@@ -47,11 +45,10 @@ func (h *UserURLsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prefix := strings.TrimRight(h.config.PrefixURL, "/") + "/"
 	response := make([]userURLResponse, 0, len(results))
 	for _, item := range results {
 		response = append(response, userURLResponse{
-			ShortURL:    prefix + strings.TrimLeft(item.ShortURL, "/"),
+			ShortURL:    item.ShortURL,
 			OriginalURL: item.OriginalURL,
 		})
 	}

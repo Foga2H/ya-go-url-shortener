@@ -1,29 +1,34 @@
 package handler
 
 import (
+	"database/sql"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/Foga2H/ya-go-url-shortener/internal/config/db"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewPingHandler(t *testing.T) {
-	cfg := db.NewConfigFrom("postgres://127.0.0.1:5432/test?sslmode=disable")
+	dbConn, err := sql.Open("pgx", "postgres://127.0.0.1:5432/test?sslmode=disable")
+	require.NoError(t, err)
+	defer dbConn.Close()
 
-	h := NewPingHandler(cfg)
+	h := NewPingHandler(dbConn)
 
 	require.NotNil(t, h)
-	assert.Same(t, cfg, h.Config)
 }
 
 func TestPingHandler_ServeHTTP_DatabaseUnavailable(t *testing.T) {
-	cfg := db.NewConfigFrom("postgres://127.0.0.1:1/test?sslmode=disable")
-	h := NewPingHandler(cfg)
+	dbConn, err := sql.Open("pgx", "postgres://127.0.0.1:1/test?sslmode=disable")
+	require.NoError(t, err)
+	defer dbConn.Close()
+
+	h := NewPingHandler(dbConn)
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	w := httptest.NewRecorder()

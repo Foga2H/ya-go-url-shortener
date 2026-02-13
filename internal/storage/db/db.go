@@ -34,7 +34,7 @@ func (s *Storage) Set(ctx context.Context, userID, key, value string) (string, e
 		`INSERT INTO links (uuid, user_id, short_url, original_url)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING short_url`,
-		uuid.New().String(),
+		uuid.NewString(),
 		userID,
 		key,
 		value,

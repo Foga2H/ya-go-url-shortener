@@ -13,8 +13,8 @@ type Link struct {
 }
 
 type MemStorage struct {
-	links      map[string]Link
-	linksMutex sync.RWMutex
+	links map[string]Link
+	mu    sync.RWMutex
 }
 
 func NewMemStorage() *MemStorage {
@@ -24,8 +24,8 @@ func NewMemStorage() *MemStorage {
 }
 
 func (m *MemStorage) Set(_ context.Context, userID, key, value string) (string, error) {
-	m.linksMutex.Lock()
-	defer m.linksMutex.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.links[key] = Link{
 		OriginalURL: value,
 		UserID:      userID,
@@ -34,15 +34,15 @@ func (m *MemStorage) Set(_ context.Context, userID, key, value string) (string, 
 }
 
 func (m *MemStorage) Get(_ context.Context, key string) (string, bool) {
-	m.linksMutex.RLock()
-	defer m.linksMutex.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	val, ok := m.links[key]
 	return val.OriginalURL, ok
 }
 
 func (m *MemStorage) GetByUserID(_ context.Context, userID string) ([]repository.UserLink, error) {
-	m.linksMutex.RLock()
-	defer m.linksMutex.RUnlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	result := make([]repository.UserLink, 0)
 	for shortURL, link := range m.links {

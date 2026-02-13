@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,16 +36,27 @@ func TestShortenJSONHandler_ServeHTTP(t *testing.T) {
 		args   args
 		want   want
 	}{
-		// TODO: Add test cases.
+		{
+			name: "success",
+			fields: fields{
+				Storage: storage.NewMemStorage(),
+				config:  config.NewConfigFrom("localhost:8080", "http://localhost:8080"),
+			},
+			args: args{
+				bodyString: `{"url":"http://yandex.ru"}`,
+			},
+			want: want{
+				code:        http.StatusCreated,
+				contentType: "application/json",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &ShortenJSONHandler{
-				Storage: tt.fields.Storage,
-				config:  tt.fields.config,
-			}
+			h := NewShortenJSONHandler(tt.fields.Storage, tt.fields.config)
 
 			request := httptest.NewRequest(http.MethodPost, `/api/shorten`, strings.NewReader(tt.args.bodyString))
+			request = request.WithContext(middleware.ContextWithUserID(request.Context(), "test-user"))
 
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, request)

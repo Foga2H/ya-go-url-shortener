@@ -35,7 +35,7 @@ func (s *Storage) Set(_ context.Context, userID, key, value string) (string, err
 	}
 
 	storageFile = append(storageFile, StorageItem{
-		UUID:        uuid.New().String(),
+		UUID:        uuid.NewString(),
 		UserID:      userID,
 		ShortURL:    key,
 		OriginalURL: value,
