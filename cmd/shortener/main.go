@@ -32,6 +32,7 @@ func main() {
 	db := configDb.NewConfig()
 
 	var selectedStorage repository.StorageRepo = storage.NewMemStorage()
+	var pingDB *sql.DB
 
 	if db.DatabaseDSN != "" {
 		dbConnection, err := sql.Open("pgx", db.DatabaseDSN)
@@ -55,8 +56,7 @@ func main() {
 			panic(err)
 		}
 
-		r.Get("/ping", handler.NewPingHandler(dbConnection).ServeHTTP)
-
+		pingDB = dbConnection
 		selectedStorage = dbStorage.NewStorage(dbConnection)
 	} else if c.FileStoragePath != "" {
 		selectedStorage = file.NewStorage(c.FileStoragePath)
@@ -70,6 +70,10 @@ func main() {
 	r.Use(l.LoggerMiddleware())
 	r.Use(gz.Middleware())
 	r.Use(uc.Middleware())
+
+	if pingDB != nil {
+		r.Get("/ping", handler.NewPingHandler(pingDB).ServeHTTP)
+	}
 
 	r.Post("/", handler.NewCreateLinkHandler(selectedStorage, c.PrefixURL).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(selectedStorage).ServeHTTP)
