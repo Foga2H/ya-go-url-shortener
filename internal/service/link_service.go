@@ -8,6 +8,7 @@ import (
 )
 
 var ErrLinkNotFound = errors.New("link not found")
+var ErrLinkIsDeleted = errors.New("link is deleted")
 
 type LinkService struct {
 	storage repository.StorageRepo
@@ -23,5 +24,9 @@ func (s *LinkService) Resolve(ctx context.Context, id string) (string, error) {
 		return "", ErrLinkNotFound
 	}
 
-	return link, nil
+	if link.IsDeleted {
+		return "", ErrLinkIsDeleted
+	}
+
+	return link.OriginalURL, nil
 }

@@ -60,10 +60,10 @@ func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 		got, ok := memStorage.Get(context.Background(), key)
 		require.True(t, ok)
 		if i == 0 {
-			assert.Equal(t, "http://yandex.ru", got)
+			assert.Equal(t, "http://yandex.ru", got.OriginalURL)
 			continue
 		}
-		assert.Equal(t, "http://google.com", got)
+		assert.Equal(t, "http://google.com", got.OriginalURL)
 	}
 }
 
@@ -93,6 +93,11 @@ type conflictStorage struct {
 	originalToKey map[string]string
 }
 
+func (s *conflictStorage) BatchDelete(ctx context.context.Context, links []UserLink) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *conflictStorage) Set(_ context.Context, _ string, key string, value string) (string, error) {
 	if existingKey, ok := s.originalToKey[value]; ok {
 		return existingKey, db.ErrOriginalURLConflict
@@ -101,13 +106,16 @@ func (s *conflictStorage) Set(_ context.Context, _ string, key string, value str
 	return key, nil
 }
 
-func (s *conflictStorage) Get(_ context.Context, key string) (string, bool) {
+func (s *conflictStorage) Get(_ context.Context, key string) (repository.UserLink, bool) {
 	for originalURL, storedKey := range s.originalToKey {
 		if storedKey == key {
-			return originalURL, true
+			return repository.UserLink{
+				ShortURL:    storedKey,
+				OriginalURL: originalURL,
+			}, true
 		}
 	}
-	return "", false
+	return repository.UserLink{}, false
 }
 
 func (s *conflictStorage) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {

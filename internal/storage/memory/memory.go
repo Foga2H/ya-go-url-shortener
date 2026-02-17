@@ -10,11 +10,33 @@ import (
 type Link struct {
 	OriginalURL string
 	UserID      string
+	IsDeleted   bool
 }
 
 type MemStorage struct {
 	links map[string]Link
 	mu    sync.RWMutex
+}
+
+func (m *MemStorage) BatchDelete(_ context.Context, userID string, links []string) error {
+	if len(links) == 0 {
+		return nil
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, shortURL := range links {
+		link, ok := m.links[shortURL]
+		if !ok || link.UserID != userID {
+			continue
+		}
+
+		link.IsDeleted = true
+		m.links[shortURL] = link
+	}
+
+	return nil
 }
 
 func NewMemStorage() *MemStorage {
@@ -33,11 +55,19 @@ func (m *MemStorage) Set(_ context.Context, userID, key, value string) (string, 
 	return key, nil
 }
 
-func (m *MemStorage) Get(_ context.Context, key string) (string, bool) {
+func (m *MemStorage) Get(_ context.Context, key string) (repository.UserLink, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	val, ok := m.links[key]
-	return val.OriginalURL, ok
+	if !ok {
+		return repository.UserLink{}, false
+	}
+
+	return repository.UserLink{
+		ShortURL:    key,
+		OriginalURL: val.OriginalURL,
+		IsDeleted:   val.IsDeleted,
+	}, true
 }
 
 func (m *MemStorage) GetByUserID(_ context.Context, userID string) ([]repository.UserLink, error) {
@@ -47,6 +77,9 @@ func (m *MemStorage) GetByUserID(_ context.Context, userID string) ([]repository
 	result := make([]repository.UserLink, 0)
 	for shortURL, link := range m.links {
 		if link.UserID != userID {
+			continue
+		}
+		if link.IsDeleted {
 			continue
 		}
 

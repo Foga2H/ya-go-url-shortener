@@ -14,6 +14,40 @@ type Storage struct {
 	path string
 }
 
+func (s *Storage) BatchDelete(_ context.Context, userID string, links []string) error {
+	if len(links) == 0 {
+		return nil
+	}
+
+	items, err := s.load()
+	if err != nil {
+		return err
+	}
+
+	toDelete := make(map[string]struct{}, len(links))
+	for _, shortURL := range links {
+		toDelete[shortURL] = struct{}{}
+	}
+
+	for i := range items {
+		if items[i].UserID != userID {
+			continue
+		}
+		if _, ok := toDelete[items[i].ShortURL]; !ok {
+			continue
+		}
+
+		items[i].IsDeleted = true
+	}
+
+	data, err := json.Marshal(items)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(s.path, data, 0666)
+}
+
 func NewStorage(path string) *Storage {
 	return &Storage{
 		path: path,
@@ -25,6 +59,7 @@ type StorageItem struct {
 	UserID      string `json:"user_id"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	IsDeleted   bool   `json:"is_deleted"`
 }
 
 func (s *Storage) Set(_ context.Context, userID, key, value string) (string, error) {
@@ -55,23 +90,27 @@ func (s *Storage) Set(_ context.Context, userID, key, value string) (string, err
 	return key, nil
 }
 
-func (s *Storage) Get(_ context.Context, key string) (string, bool) {
+func (s *Storage) Get(_ context.Context, key string) (repository.UserLink, bool) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
-		return "", false
+		return repository.UserLink{}, false
 	}
 	var items []StorageItem
 	if err := json.Unmarshal(data, &items); err != nil {
-		return "", false
+		return repository.UserLink{}, false
 	}
 
 	for _, item := range items {
 		if item.ShortURL == key {
-			return item.OriginalURL, true
+			return repository.UserLink{
+				ShortURL:    item.ShortURL,
+				OriginalURL: item.OriginalURL,
+				IsDeleted:   item.IsDeleted,
+			}, true
 		}
 	}
 
-	return "", false
+	return repository.UserLink{}, false
 }
 
 func (s *Storage) GetByUserID(_ context.Context, userID string) ([]repository.UserLink, error) {
@@ -83,6 +122,9 @@ func (s *Storage) GetByUserID(_ context.Context, userID string) ([]repository.Us
 	result := make([]repository.UserLink, 0)
 	for _, item := range items {
 		if item.UserID != userID {
+			continue
+		}
+		if item.IsDeleted {
 			continue
 		}
 

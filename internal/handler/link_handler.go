@@ -32,6 +32,12 @@ func (h *LinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, "Link not found", http.StatusNotFound)
 			return
 		}
+		
+		if errors.Is(err, service.ErrLinkIsDeleted) {
+			http.Error(res, "Link is deleted", http.StatusGone)
+			return
+		}
+
 		http.Error(res, "Link not found", http.StatusNotFound)
 		return
 	}

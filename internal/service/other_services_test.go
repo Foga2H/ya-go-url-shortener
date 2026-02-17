@@ -15,12 +15,17 @@ type shortenStorageMock struct {
 	set func(ctx context.Context, userID, key, value string) (string, error)
 }
 
+func (m *shortenStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *shortenStorageMock) Set(ctx context.Context, userID, key, value string) (string, error) {
 	return m.set(ctx, userID, key, value)
 }
 
-func (m *shortenStorageMock) Get(_ context.Context, _ string) (string, bool) {
-	return "", false
+func (m *shortenStorageMock) Get(_ context.Context, _ string) (repository.UserLink, bool) {
+	return repository.UserLink{}, false
 }
 
 func (m *shortenStorageMock) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {
@@ -54,15 +59,20 @@ func TestShortenBatchService_ShortenError(t *testing.T) {
 }
 
 type linkStorageMock struct {
-	link string
+	link repository.UserLink
 	ok   bool
+}
+
+func (m *linkStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m *linkStorageMock) Set(_ context.Context, _ string, key, _ string) (string, error) {
 	return key, nil
 }
 
-func (m *linkStorageMock) Get(_ context.Context, _ string) (string, bool) {
+func (m *linkStorageMock) Get(_ context.Context, _ string) (repository.UserLink, bool) {
 	return m.link, m.ok
 }
 
@@ -78,17 +88,36 @@ func TestLinkService_ResolveNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrLinkNotFound)
 }
 
+func TestLinkService_ResolveDeleted(t *testing.T) {
+	svc := NewLinkService(&linkStorageMock{
+		ok: true,
+		link: repository.UserLink{
+			OriginalURL: "http://example.com",
+			IsDeleted:   true,
+		},
+	})
+
+	_, err := svc.Resolve(context.Background(), "abc")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrLinkIsDeleted)
+}
+
 type userURLsStorageMock struct {
 	items []repository.UserLink
 	err   error
+}
+
+func (m *userURLsStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m *userURLsStorageMock) Set(_ context.Context, _ string, key, _ string) (string, error) {
 	return key, nil
 }
 
-func (m *userURLsStorageMock) Get(_ context.Context, _ string) (string, bool) {
-	return "", false
+func (m *userURLsStorageMock) Get(_ context.Context, _ string) (repository.UserLink, bool) {
+	return repository.UserLink{}, false
 }
 
 func (m *userURLsStorageMock) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {

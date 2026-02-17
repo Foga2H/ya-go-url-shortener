@@ -15,12 +15,17 @@ type testStorage struct {
 	setFunc func(ctx context.Context, userID, key, value string) (string, error)
 }
 
+func (s *testStorage) BatchDelete(ctx context.context.Context, links []UserLink) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *testStorage) Set(ctx context.Context, userID, key, value string) (string, error) {
 	return s.setFunc(ctx, userID, key, value)
 }
 
-func (s *testStorage) Get(_ context.Context, _ string) (string, bool) {
-	return "", false
+func (s *testStorage) Get(_ context.Context, _ string) (repository.UserLink, bool) {
+	return repository.UserLink{}, false
 }
 
 func (s *testStorage) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {

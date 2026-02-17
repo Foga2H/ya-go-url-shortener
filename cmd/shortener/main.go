@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"flag"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/auth"
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
@@ -14,6 +18,7 @@ import (
 	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 	dbStorage "github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/file"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
@@ -81,6 +86,14 @@ func main() {
 	r.Post("/api/shorten", handler.NewShortenJSONHandler(selectedStorage, c).ServeHTTP)
 	r.Post("/api/shorten/batch", handler.NewShortenBatchJSONHandler(selectedStorage, c).ServeHTTP)
 	r.Get("/api/user/urls", handler.NewUserURLsHandler(selectedStorage, c).ServeHTTP)
+
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	deleteSvc := service.NewDeleteUserURLsService(selectedStorage, c)
+	deleteSvc.Start(appCtx)
+
+	r.Delete("/api/user/urls", handler.NewDeleteUserURLsHandler(deleteSvc).ServeHTTP)
 
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {

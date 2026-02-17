@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ func TestMemStorage_Get(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   string
+		want   repository.UserLink
 		want1  bool
 	}{
 		{
@@ -32,7 +33,10 @@ func TestMemStorage_Get(t *testing.T) {
 			args: args{
 				key: "link1",
 			},
-			want:  "value1",
+			want: repository.UserLink{
+				ShortURL:    "link1",
+				OriginalURL: "value1",
+			},
 			want1: true,
 		},
 		{
@@ -45,7 +49,7 @@ func TestMemStorage_Get(t *testing.T) {
 			args: args{
 				key: "link1",
 			},
-			want:  "",
+			want:  repository.UserLink{},
 			want1: false,
 		},
 	}
@@ -55,7 +59,7 @@ func TestMemStorage_Get(t *testing.T) {
 				links: tt.fields.links,
 			}
 			got, got1 := m.Get(context.Background(), tt.args.key)
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Get() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
