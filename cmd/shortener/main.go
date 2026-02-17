@@ -70,6 +70,7 @@ func main() {
 	r.Get("/ping", handler.NewPingHandler(db).ServeHTTP)
 
 	r.Post("/api/shorten", handler.NewShortenJSONHandler(selectedStorage, c).ServeHTTP)
+	r.Post("/api/shorten/batch", handler.NewShortenBatchJSONHandler(selectedStorage, c).ServeHTTP)
 
 	err := http.ListenAndServe(c.BaseURL, r)
 	if err != nil {
