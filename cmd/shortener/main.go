@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	configDb "github.com/Foga2H/ya-go-url-shortener/internal/config/db"
 	"github.com/Foga2H/ya-go-url-shortener/internal/gzip"
 	"github.com/Foga2H/ya-go-url-shortener/internal/handler"
 	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
@@ -17,6 +18,7 @@ func main() {
 
 	flag.Parse()
 	c := config.NewConfig()
+	db := configDb.NewConfig()
 	//memStorage := storage.NewMemStorage()
 	fileStorage := file.NewStorage(c.FileStoragePath)
 	l := logger.NewLogger()
@@ -27,6 +29,8 @@ func main() {
 
 	r.Post("/", handler.NewCreateLinkHandler(fileStorage, c).ServeHTTP)
 	r.Get("/{url}", handler.NewLinkHandler(fileStorage).ServeHTTP)
+
+	r.Get("/ping", handler.NewPingHandler(db).ServeHTTP)
 
 	r.Post("/api/shorten", handler.NewShortenJSONHandler(fileStorage, c).ServeHTTP)
 
