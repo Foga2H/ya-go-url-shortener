@@ -6,9 +6,6 @@ import (
 	"errors"
 	"flag"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/auth"
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
@@ -87,11 +84,8 @@ func main() {
 	r.Post("/api/shorten/batch", handler.NewShortenBatchJSONHandler(selectedStorage, c).ServeHTTP)
 	r.Get("/api/user/urls", handler.NewUserURLsHandler(selectedStorage, c).ServeHTTP)
 
-	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	deleteSvc := service.NewDeleteUserURLsService(selectedStorage, c)
-	deleteSvc.Start(appCtx)
+	deleteSvc.Start(context.Background())
 
 	r.Delete("/api/user/urls", handler.NewDeleteUserURLsHandler(deleteSvc).ServeHTTP)
 
