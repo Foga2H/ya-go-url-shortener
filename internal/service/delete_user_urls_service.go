@@ -29,8 +29,8 @@ func NewDeleteUserURLsService(storage repository.StorageRepo, config *config.Con
 	}
 }
 
-func (d *DeleteUserURLsService) Enqueue(userId string, shortUrls []string) {
-	d.userID = userId
+func (d *DeleteUserURLsService) Enqueue(userID string, shortUrls []string) {
+	d.userID = userID
 	d.in <- shortUrls
 }
 
