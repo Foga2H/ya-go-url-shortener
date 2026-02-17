@@ -93,9 +93,8 @@ type conflictStorage struct {
 	originalToKey map[string]string
 }
 
-func (s *conflictStorage) BatchDelete(ctx context.context.Context, links []UserLink) error {
-	//TODO implement me
-	panic("implement me")
+func (s *conflictStorage) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
 }
 
 func (s *conflictStorage) Set(_ context.Context, _ string, key string, value string) (string, error) {

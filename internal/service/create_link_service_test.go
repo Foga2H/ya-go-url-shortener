@@ -15,9 +15,8 @@ type testStorage struct {
 	setFunc func(ctx context.Context, userID, key, value string) (string, error)
 }
 
-func (s *testStorage) BatchDelete(ctx context.context.Context, links []UserLink) error {
-	//TODO implement me
-	panic("implement me")
+func (s *testStorage) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
 }
 
 func (s *testStorage) Set(ctx context.Context, userID, key, value string) (string, error) {

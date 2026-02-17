@@ -15,9 +15,8 @@ type shortenStorageMock struct {
 	set func(ctx context.Context, userID, key, value string) (string, error)
 }
 
-func (m *shortenStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
-	//TODO implement me
-	panic("implement me")
+func (m *shortenStorageMock) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
 }
 
 func (m *shortenStorageMock) Set(ctx context.Context, userID, key, value string) (string, error) {
@@ -63,9 +62,8 @@ type linkStorageMock struct {
 	ok   bool
 }
 
-func (m *linkStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
-	//TODO implement me
-	panic("implement me")
+func (m *linkStorageMock) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
 }
 
 func (m *linkStorageMock) Set(_ context.Context, _ string, key, _ string) (string, error) {
@@ -107,9 +105,8 @@ type userURLsStorageMock struct {
 	err   error
 }
 
-func (m *userURLsStorageMock) BatchDelete(ctx context.context.Context, links []UserLink) error {
-	//TODO implement me
-	panic("implement me")
+func (m *userURLsStorageMock) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
 }
 
 func (m *userURLsStorageMock) Set(_ context.Context, _ string, key, _ string) (string, error) {
