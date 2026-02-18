@@ -49,7 +49,7 @@ func (d *DeleteUserURLsService) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			pending = d.flushPending(ctx, pending)
+			d.flushPending(ctx, pending)
 			return
 
 		case urls := <-d.in:
