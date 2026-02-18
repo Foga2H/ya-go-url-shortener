@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/service"
@@ -13,11 +14,13 @@ import (
 
 type ShortenJSONHandler struct {
 	service *service.ShortenService
+	logger  *logger.Logger
 }
 
-func NewShortenJSONHandler(storage repository.StorageRepo, config *config.Config) *ShortenJSONHandler {
+func NewShortenJSONHandler(storage repository.StorageRepo, config *config.Config, logger *logger.Logger) *ShortenJSONHandler {
 	return &ShortenJSONHandler{
-		service: service.NewShortenService(storage, config.PrefixURL),
+		service: service.NewShortenService(storage, config.PrefixURL, logger),
+		logger:  logger,
 	}
 }
 
@@ -34,7 +37,8 @@ func (h *ShortenJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.logger.Warnf("Unauthorized request: path=%s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -42,28 +46,33 @@ func (h *ShortenJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	err := jsonDecoder.Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid JSON Body", http.StatusBadRequest)
+		h.logger.Errorf("Invalid JSON body: %v", err)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	result, err := h.service.Shorten(r.Context(), userID, req.URL)
 	if err != nil {
 		if errors.Is(err, service.ErrGenerateShortLink) {
-			http.Error(w, "Error when trying to generate random link", http.StatusBadRequest)
+			h.logger.Errorf("Failed to generate short link: %v", err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 		if errors.Is(err, service.ErrSaveShortLink) {
-			http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
+			h.logger.Errorf("Failed to save short link: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to shorten URL: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	resp, err := json.Marshal(Response{Result: result.ShortURL})
 	if err != nil {
-		http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

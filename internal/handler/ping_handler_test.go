@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestNewPingHandler(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	h := NewPingHandler(dbConn)
+	h := NewPingHandler(dbConn, logger.NewLogger())
 
 	require.NotNil(t, h)
 }
@@ -28,7 +29,7 @@ func TestPingHandler_ServeHTTP_DatabaseUnavailable(t *testing.T) {
 	require.NoError(t, err)
 	defer dbConn.Close()
 
-	h := NewPingHandler(dbConn)
+	h := NewPingHandler(dbConn, logger.NewLogger())
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	w := httptest.NewRecorder()
@@ -43,5 +44,5 @@ func TestPingHandler_ServeHTTP_DatabaseUnavailable(t *testing.T) {
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), "Error when trying to connect to database")
+	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), http.StatusText(http.StatusInternalServerError))
 }

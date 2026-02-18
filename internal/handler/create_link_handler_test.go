@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestCreateLinkHandler_ServeHTTP(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := config.NewConfigFrom("localhost:8080", "http://localhost:8080")
-			h := NewCreateLinkHandler(storage.NewMemStorage(), c.PrefixURL)
+			h := NewCreateLinkHandler(storage.NewMemStorage(), c.PrefixURL, logger.NewLogger())
 			request := httptest.NewRequest(http.MethodPost, `/`, strings.NewReader(tt.args.bodyString))
 			request = request.WithContext(middleware.ContextWithUserID(request.Context(), "test-user"))
 			// создаём новый Recorder

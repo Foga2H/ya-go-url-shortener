@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
@@ -22,7 +23,7 @@ import (
 func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 	memStorage := storage.NewMemStorage()
 	cfg := config.NewConfigFrom("localhost:8080", "http://localhost:8080")
-	h := NewShortenBatchJSONHandler(memStorage, cfg)
+	h := NewShortenBatchJSONHandler(memStorage, cfg, logger.NewLogger())
 
 	body := `[
 		{"correlation_id":"id-1","original_url":"http://yandex.ru"},
@@ -70,7 +71,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 func TestShortenBatchJSONHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 	memStorage := storage.NewMemStorage()
 	cfg := config.NewConfigFrom("localhost:8080", "http://localhost:8080")
-	h := NewShortenBatchJSONHandler(memStorage, cfg)
+	h := NewShortenBatchJSONHandler(memStorage, cfg, logger.NewLogger())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(`{"invalid"`))
 	req = req.WithContext(middleware.ContextWithUserID(req.Context(), "test-user"))
@@ -86,7 +87,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), "Invalid JSON Body")
+	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), http.StatusText(http.StatusBadRequest))
 }
 
 type conflictStorage struct {
@@ -128,7 +129,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_ConflictInBatch(t *testing.T) {
 			"http://yandex.ru": "exists1",
 		},
 	}
-	h := NewShortenBatchJSONHandler(st, cfg)
+	h := NewShortenBatchJSONHandler(st, cfg, logger.NewLogger())
 
 	body := `[
 		{"correlation_id":"id-1","original_url":"http://yandex.ru"},

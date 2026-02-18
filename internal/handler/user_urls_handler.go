@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/service"
@@ -12,6 +13,7 @@ import (
 
 type UserURLsHandler struct {
 	service *service.UserURLsService
+	logger  *logger.Logger
 }
 
 type userURLResponse struct {
@@ -19,9 +21,10 @@ type userURLResponse struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func NewUserURLsHandler(storage repository.StorageRepo, config *config.Config) *UserURLsHandler {
+func NewUserURLsHandler(storage repository.StorageRepo, config *config.Config, logger *logger.Logger) *UserURLsHandler {
 	return &UserURLsHandler{
-		service: service.NewUserURLsService(storage, config.PrefixURL),
+		service: service.NewUserURLsService(storage, config.PrefixURL, logger),
+		logger:  logger,
 	}
 }
 
@@ -30,13 +33,15 @@ func (h *UserURLsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.logger.Warnf("Unauthorized request: path=%s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	results, err := h.service.List(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "Server Error", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to list user URLs: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -55,7 +60,8 @@ func (h *UserURLsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

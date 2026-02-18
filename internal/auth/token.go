@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -43,8 +44,9 @@ func (t *Token) ParseUserID(tokenString string) (string, error) {
 		}
 		return t.secret, nil
 	})
+
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse token: %w", err)
 	}
 
 	if !token.Valid {

@@ -5,39 +5,22 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/mocks"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-type testStorage struct {
-	setFunc func(ctx context.Context, userID, key, value string) (string, error)
-}
-
-func (s *testStorage) BatchDelete(_ context.Context, _ string, _ []string) error {
-	return nil
-}
-
-func (s *testStorage) Set(ctx context.Context, userID, key, value string) (string, error) {
-	return s.setFunc(ctx, userID, key, value)
-}
-
-func (s *testStorage) Get(_ context.Context, _ string) (repository.UserLink, bool) {
-	return repository.UserLink{}, false
-}
-
-func (s *testStorage) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {
-	return nil, nil
-}
-
 func TestCreateLinkService_Create(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc := NewCreateLinkService(&testStorage{
-			setFunc: func(_ context.Context, _ string, key, _ string) (string, error) {
-				return key, nil
-			},
-		}, "http://localhost:8080")
+		storage := mocks.NewStorageRepo(t)
+		storage.EXPECT().
+			Set(mock.Anything, "user-1", mock.AnythingOfType("string"), "http://example.com").
+			Return("abc123", nil)
+
+		svc := NewCreateLinkService(storage, "http://localhost:8080", logger.NewLogger())
 
 		result, err := svc.Create(context.Background(), "user-1", "http://example.com")
 		require.NoError(t, err)
@@ -46,11 +29,8 @@ func TestCreateLinkService_Create(t *testing.T) {
 	})
 
 	t.Run("invalid url", func(t *testing.T) {
-		svc := NewCreateLinkService(&testStorage{
-			setFunc: func(_ context.Context, _ string, key, _ string) (string, error) {
-				return key, nil
-			},
-		}, "http://localhost:8080")
+		storage := mocks.NewStorageRepo(t)
+		svc := NewCreateLinkService(storage, "http://localhost:8080", logger.NewLogger())
 
 		_, err := svc.Create(context.Background(), "user-1", "not-a-url")
 		require.Error(t, err)
@@ -58,11 +38,12 @@ func TestCreateLinkService_Create(t *testing.T) {
 	})
 
 	t.Run("conflict", func(t *testing.T) {
-		svc := NewCreateLinkService(&testStorage{
-			setFunc: func(_ context.Context, _ string, _ string, _ string) (string, error) {
-				return "fixed", db.ErrOriginalURLConflict
-			},
-		}, "http://localhost:8080")
+		storage := mocks.NewStorageRepo(t)
+		storage.EXPECT().
+			Set(mock.Anything, "user-1", mock.AnythingOfType("string"), "http://example.com").
+			Return("fixed", db.ErrOriginalURLConflict)
+
+		svc := NewCreateLinkService(storage, "http://localhost:8080", logger.NewLogger())
 
 		result, err := svc.Create(context.Background(), "user-1", "http://example.com")
 		require.NoError(t, err)
@@ -71,11 +52,12 @@ func TestCreateLinkService_Create(t *testing.T) {
 	})
 
 	t.Run("save error", func(t *testing.T) {
-		svc := NewCreateLinkService(&testStorage{
-			setFunc: func(_ context.Context, _ string, _ string, _ string) (string, error) {
-				return "", errors.New("db down")
-			},
-		}, "http://localhost:8080")
+		storage := mocks.NewStorageRepo(t)
+		storage.EXPECT().
+			Set(mock.Anything, "user-1", mock.AnythingOfType("string"), "http://example.com").
+			Return("", errors.New("db down"))
+
+		svc := NewCreateLinkService(storage, "http://localhost:8080", logger.NewLogger())
 
 		_, err := svc.Create(context.Background(), "user-1", "http://example.com")
 		require.Error(t, err)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/service"
@@ -13,11 +14,13 @@ import (
 
 type ShortenBatchJSONHandler struct {
 	service *service.ShortenBatchService
+	logger  *logger.Logger
 }
 
-func NewShortenBatchJSONHandler(storage repository.StorageRepo, config *config.Config) *ShortenBatchJSONHandler {
+func NewShortenBatchJSONHandler(storage repository.StorageRepo, config *config.Config, logger *logger.Logger) *ShortenBatchJSONHandler {
 	return &ShortenBatchJSONHandler{
-		service: service.NewShortenBatchService(service.NewShortenService(storage, config.PrefixURL)),
+		service: service.NewShortenBatchService(service.NewShortenService(storage, config.PrefixURL, logger)),
+		logger:  logger,
 	}
 }
 
@@ -36,7 +39,8 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	userID, ok := middleware.UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		h.logger.Warnf("Unauthorized request: path=%s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -44,7 +48,8 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	var items []BatchRequest
 	err := jsonDecoder.Decode(&items)
 	if err != nil {
-		http.Error(w, "Invalid JSON Body", http.StatusBadRequest)
+		h.logger.Errorf("Invalid JSON body: %v", err)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -59,10 +64,12 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	results, err := h.service.Shorten(r.Context(), userID, serviceItems)
 	if err != nil {
 		if errors.Is(err, service.ErrGenerateShortLink) || errors.Is(err, service.ErrSaveShortLink) {
-			http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
+			h.logger.Errorf("Failed to save short links: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to shorten batch: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -76,7 +83,8 @@ func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 
 	resp, err := json.Marshal(respResult)
 	if err != nil {
-		http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

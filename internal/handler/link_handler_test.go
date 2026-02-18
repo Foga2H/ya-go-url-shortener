@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +53,7 @@ func TestLinkHandler_ServeHTTP(t *testing.T) {
 			},
 			want: want{
 				code:        http.StatusNotFound,
-				response:    "Link not found",
+				response:    http.StatusText(http.StatusNotFound),
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -60,7 +61,7 @@ func TestLinkHandler_ServeHTTP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLinkHandler(memStorage)
+			h := NewLinkHandler(memStorage, logger.NewLogger())
 			request := httptest.NewRequest(http.MethodGet, tt.args.url, tt.args.body)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
@@ -53,7 +54,7 @@ func TestShortenJSONHandler_ServeHTTP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewShortenJSONHandler(tt.fields.Storage, tt.fields.config)
+			h := NewShortenJSONHandler(tt.fields.Storage, tt.fields.config, logger.NewLogger())
 
 			request := httptest.NewRequest(http.MethodPost, `/api/shorten`, strings.NewReader(tt.args.bodyString))
 			request = request.WithContext(middleware.ContextWithUserID(request.Context(), "test-user"))

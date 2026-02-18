@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/service"
@@ -12,11 +13,13 @@ import (
 
 type CreateLinkHandler struct {
 	service *service.CreateLinkService
+	logger  *logger.Logger
 }
 
-func NewCreateLinkHandler(storage repository.StorageRepo, prefixURL string) *CreateLinkHandler {
+func NewCreateLinkHandler(storage repository.StorageRepo, prefixURL string, logger *logger.Logger) *CreateLinkHandler {
 	return &CreateLinkHandler{
-		service: service.NewCreateLinkService(storage, prefixURL),
+		service: service.NewCreateLinkService(storage, prefixURL, logger),
+		logger:  logger,
 	}
 }
 
@@ -25,13 +28,14 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 
 	userID, ok := middleware.UserIDFromContext(req.Context())
 	if !ok {
-		http.Error(res, "Unauthorized", http.StatusUnauthorized)
+		http.Error(res, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
 	bodyBytes, err := io.ReadAll(req.Body)
 	if err != nil {
-		http.Error(res, "Invalid Body", http.StatusBadRequest)
+		h.logger.Errorf("Failed to read body: %v", err)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -39,19 +43,25 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 	result, err := h.service.Create(req.Context(), userID, bodyString)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidURL) {
-			http.Error(res, "Provided URL is not valid", http.StatusBadRequest)
-			return
-		}
-		if errors.Is(err, service.ErrGenerateShortLink) {
-			http.Error(res, "Error when trying to generate random link", http.StatusBadRequest)
-			return
-		}
-		if errors.Is(err, service.ErrSaveLink) {
-			http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
+			h.logger.Errorf("Invalid URL: %s", req.URL.Path)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
-		http.Error(res, "Error when trying to save link", http.StatusInternalServerError)
+		if errors.Is(err, service.ErrGenerateShortLink) {
+			h.logger.Errorf("Failed to generate short link: %v", err)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if errors.Is(err, service.ErrSaveLink) {
+			h.logger.Errorf("Error when trying to save link: %v", err)
+			http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		h.logger.Errorf("Failed to create link: %v", err)
+		http.Error(res, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -62,7 +72,8 @@ func (h *CreateLinkHandler) ServeHTTP(res http.ResponseWriter, req *http.Request
 	}
 	_, err = res.Write([]byte(result.ShortURL))
 	if err != nil {
-		http.Error(res, "Error when trying to return response data", http.StatusBadRequest)
+		h.logger.Errorf("Failed to write response: %v", err)
+		http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 }

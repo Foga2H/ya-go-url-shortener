@@ -26,6 +26,7 @@ func (s *ShortenBatchService) Shorten(ctx context.Context, userID string, items 
 	for _, item := range items {
 		result, err := s.shorten.Shorten(ctx, userID, item.OriginalURL)
 		if err != nil {
+			s.shorten.logger.Errorf("Failed to shorten batch item %s: %v", item.CorrelationID, err)
 			return nil, err
 		}
 

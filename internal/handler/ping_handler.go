@@ -8,16 +8,18 @@ import (
 
 	"database/sql"
 
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
 	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type PingHandler struct {
 	service *service.PingService
+	logger  *logger.Logger
 }
 
-func NewPingHandler(db *sql.DB) *PingHandler {
-	return &PingHandler{service: service.NewPingService(db)}
+func NewPingHandler(db *sql.DB, logger *logger.Logger) *PingHandler {
+	return &PingHandler{service: service.NewPingService(db, logger), logger: logger}
 }
 
 type pingResponse struct {
@@ -30,7 +32,8 @@ func (h *PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
 	if err := h.service.Ping(ctx); err != nil {
-		http.Error(w, "Error when trying to connect to database", http.StatusInternalServerError)
+		h.logger.Errorf("Failed to ping database: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
