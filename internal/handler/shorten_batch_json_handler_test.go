@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"testing"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
+	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
 	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
 	storage "github.com/Foga2H/ya-go-url-shortener/internal/storage/memory"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +23,7 @@ import (
 func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 	memStorage := storage.NewMemStorage()
 	cfg := config.NewConfigFrom("localhost:8080", "http://localhost:8080")
-	h := NewShortenBatchJSONHandler(memStorage, cfg)
+	h := NewShortenBatchJSONHandler(memStorage, cfg, logger.NewLogger())
 
 	body := `[
 		{"correlation_id":"id-1","original_url":"http://yandex.ru"},
@@ -27,6 +31,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 	]`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(body))
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), "test-user"))
 	w := httptest.NewRecorder()
 
 	h.ServeHTTP(w, req)
@@ -53,22 +58,23 @@ func TestShortenBatchJSONHandler_ServeHTTP_Success(t *testing.T) {
 		assert.True(t, matched, "Ожидался корректный короткий URL, получено: %s", item.ShortURL)
 
 		key := strings.TrimPrefix(item.ShortURL, cfg.PrefixURL+"/")
-		got, ok := memStorage.Get(key)
+		got, ok := memStorage.Get(context.Background(), key)
 		require.True(t, ok)
 		if i == 0 {
-			assert.Equal(t, "http://yandex.ru", got)
+			assert.Equal(t, "http://yandex.ru", got.OriginalURL)
 			continue
 		}
-		assert.Equal(t, "http://google.com", got)
+		assert.Equal(t, "http://google.com", got.OriginalURL)
 	}
 }
 
 func TestShortenBatchJSONHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 	memStorage := storage.NewMemStorage()
 	cfg := config.NewConfigFrom("localhost:8080", "http://localhost:8080")
-	h := NewShortenBatchJSONHandler(memStorage, cfg)
+	h := NewShortenBatchJSONHandler(memStorage, cfg, logger.NewLogger())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(`{"invalid"`))
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), "test-user"))
 	w := httptest.NewRecorder()
 
 	h.ServeHTTP(w, req)
@@ -81,14 +87,18 @@ func TestShortenBatchJSONHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), "Invalid JSON Body")
+	assert.Contains(t, strings.TrimSpace(string(bodyBytes)), http.StatusText(http.StatusBadRequest))
 }
 
 type conflictStorage struct {
 	originalToKey map[string]string
 }
 
-func (s *conflictStorage) Set(key string, value string) (string, error) {
+func (s *conflictStorage) BatchDelete(_ context.Context, _ string, _ []string) error {
+	return nil
+}
+
+func (s *conflictStorage) Set(_ context.Context, _ string, key string, value string) (string, error) {
 	if existingKey, ok := s.originalToKey[value]; ok {
 		return existingKey, db.ErrOriginalURLConflict
 	}
@@ -96,13 +106,20 @@ func (s *conflictStorage) Set(key string, value string) (string, error) {
 	return key, nil
 }
 
-func (s *conflictStorage) Get(key string) (string, bool) {
+func (s *conflictStorage) Get(_ context.Context, key string) (repository.UserLink, bool) {
 	for originalURL, storedKey := range s.originalToKey {
 		if storedKey == key {
-			return originalURL, true
+			return repository.UserLink{
+				ShortURL:    storedKey,
+				OriginalURL: originalURL,
+			}, true
 		}
 	}
-	return "", false
+	return repository.UserLink{}, false
+}
+
+func (s *conflictStorage) GetByUserID(_ context.Context, _ string) ([]repository.UserLink, error) {
+	return nil, nil
 }
 
 func TestShortenBatchJSONHandler_ServeHTTP_ConflictInBatch(t *testing.T) {
@@ -112,7 +129,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_ConflictInBatch(t *testing.T) {
 			"http://yandex.ru": "exists1",
 		},
 	}
-	h := NewShortenBatchJSONHandler(st, cfg)
+	h := NewShortenBatchJSONHandler(st, cfg, logger.NewLogger())
 
 	body := `[
 		{"correlation_id":"id-1","original_url":"http://yandex.ru"},
@@ -120,6 +137,7 @@ func TestShortenBatchJSONHandler_ServeHTTP_ConflictInBatch(t *testing.T) {
 	]`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", strings.NewReader(body))
+	req = req.WithContext(middleware.ContextWithUserID(req.Context(), "test-user"))
 	w := httptest.NewRecorder()
 
 	h.ServeHTTP(w, req)

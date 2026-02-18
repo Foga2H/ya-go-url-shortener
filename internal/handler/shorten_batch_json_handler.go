@@ -3,24 +3,24 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/Foga2H/ya-go-url-shortener/internal/config"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/middleware"
 	"github.com/Foga2H/ya-go-url-shortener/internal/repository"
-	"github.com/Foga2H/ya-go-url-shortener/internal/storage/db"
-	"github.com/Foga2H/ya-go-url-shortener/pkg/utils"
+	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 )
 
 type ShortenBatchJSONHandler struct {
-	Storage repository.StorageRepo
-	config  *config.Config
+	service *service.ShortenBatchService
+	logger  *logger.Logger
 }
 
-func NewShortenBatchJSONHandler(storage repository.StorageRepo, config *config.Config) *ShortenBatchJSONHandler {
+func NewShortenBatchJSONHandler(storage repository.StorageRepo, config *config.Config, logger *logger.Logger) *ShortenBatchJSONHandler {
 	return &ShortenBatchJSONHandler{
-		Storage: storage,
-		config:  config,
+		service: service.NewShortenBatchService(service.NewShortenService(storage, config.PrefixURL, logger)),
+		logger:  logger,
 	}
 }
 
@@ -37,56 +37,57 @@ type BatchResult struct {
 func (h *ShortenBatchJSONHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		h.logger.Warnf("Unauthorized request: path=%s", r.URL.Path)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
 	jsonDecoder := json.NewDecoder(r.Body)
 	var items []BatchRequest
 	err := jsonDecoder.Decode(&items)
 	if err != nil {
-		http.Error(w, "Invalid JSON Body", http.StatusBadRequest)
+		h.logger.Errorf("Invalid JSON body: %v", err)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	var results []BatchResult
-
+	serviceItems := make([]service.BatchItem, 0, len(items))
 	for _, item := range items {
-		result, err := h.shortItem(item)
-		if err != nil {
-			http.Error(w, "Error when trying to save link", http.StatusInternalServerError)
-			return
-		}
-		results = append(results, result)
+		serviceItems = append(serviceItems, service.BatchItem{
+			CorrelationID: item.CorrelationID,
+			OriginalURL:   item.OriginalURL,
+		})
 	}
 
-	resp, err := json.Marshal(results)
+	results, err := h.service.Shorten(r.Context(), userID, serviceItems)
 	if err != nil {
-		http.Error(w, "Error when trying to marshal response", http.StatusInternalServerError)
+		if errors.Is(err, service.ErrGenerateShortLink) || errors.Is(err, service.ErrSaveShortLink) {
+			h.logger.Errorf("Failed to save short links: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		h.logger.Errorf("Failed to shorten batch: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	respResult := make([]BatchResult, 0, len(results))
+	for _, item := range results {
+		respResult = append(respResult, BatchResult{
+			CorrelationID: item.CorrelationID,
+			ShortURL:      item.ShortURL,
+		})
+	}
+
+	resp, err := json.Marshal(respResult)
+	if err != nil {
+		h.logger.Errorf("Failed to marshal response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(resp)
-}
-
-func (h *ShortenBatchJSONHandler) shortItem(item BatchRequest) (BatchResult, error) {
-	randomString, err := utils.GenerateRandomStringURLSafe(6)
-	if err != nil {
-		return BatchResult{}, err
-	}
-
-	storedKey, err := h.Storage.Set(randomString, item.OriginalURL)
-	if err != nil {
-		if errors.Is(err, db.ErrOriginalURLConflict) {
-			var result BatchResult
-			result.CorrelationID = item.CorrelationID
-			result.ShortURL = h.config.PrefixURL + "/" + storedKey
-			return result, nil
-		}
-		return BatchResult{}, err
-	}
-	fmt.Printf("Generated link %s for %s\n", h.config.PrefixURL+"/"+storedKey, item.OriginalURL)
-
-	var result BatchResult
-	result.CorrelationID = item.CorrelationID
-	result.ShortURL = h.config.PrefixURL + "/" + storedKey
-
-	return result, nil
 }

@@ -8,36 +8,36 @@ import (
 
 	"database/sql"
 
-	"github.com/Foga2H/ya-go-url-shortener/internal/config/db"
+	"github.com/Foga2H/ya-go-url-shortener/internal/logger"
+	"github.com/Foga2H/ya-go-url-shortener/internal/service"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type PingHandler struct {
-	*db.Config
+	service *service.PingService
+	logger  *logger.Logger
 }
 
-func NewPingHandler(config *db.Config) *PingHandler {
-	return &PingHandler{config}
+func NewPingHandler(db *sql.DB, logger *logger.Logger) *PingHandler {
+	return &PingHandler{service: service.NewPingService(db, logger), logger: logger}
+}
+
+type pingResponse struct {
+	Result string `json:"result"`
 }
 
 func (h *PingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	dbConnection, err := sql.Open("pgx", h.Config.DatabaseDSN)
-	if err != nil {
-		http.Error(w, "Error when trying to connect to database", http.StatusInternalServerError)
-		return
-	}
-	defer dbConnection.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
-	if err = dbConnection.PingContext(ctx); err != nil {
-		http.Error(w, "Error when trying to connect to database", http.StatusInternalServerError)
+	if err := h.service.Ping(ctx); err != nil {
+		h.logger.Errorf("Failed to ping database: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	resp, _ := json.Marshal(Response{Result: "Success"})
+	resp, _ := json.Marshal(pingResponse{Result: "Success"})
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }
